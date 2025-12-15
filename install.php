@@ -1,7 +1,7 @@
 <?php
 /**
  * Bitrix24 Module: Responsible Role
- * Adds "Responsible" role to Tasks with custom field for employee selection
+ * Install script
  */
 
 // Prevent direct access
@@ -9,6 +9,7 @@ if (!defined("B_PROLOG_INCLUDED") || B_PROLOG_INCLUDED !== true) {
     die();
 }
 
+// Include language file
 IncludeModuleLangFile(__FILE__);
 
 class responsible_role
@@ -79,14 +80,11 @@ class responsible_role
      */
     private function CreateCustomField()
     {
-        if (!CModule::IncludeModule('crm')) {
-            return false;
-        }
+        global $DB;
 
         // Check if field already exists
-        $rsField = CUserFieldEnum::GetList(
-            [],
-            ['FIELD_NAME' => self::FIELD_NAME]
+        $rsField = $DB->Query(
+            "SELECT * FROM b_user_field WHERE FIELD_NAME = '" . self::FIELD_NAME . "' LIMIT 1"
         );
         
         if ($rsField->Fetch()) {
@@ -94,37 +92,21 @@ class responsible_role
         }
 
         // Create user field for tasks
-        $oUserField = new CUserTypeEntity();
-        $aUserField = [
+        $iFieldId = $DB->Add('b_user_field', array(
             'ENTITY_ID' => 'TASKS',
             'FIELD_NAME' => self::FIELD_NAME,
-            'USER_TYPE_ID' => 'enumeration',
+            'USER_TYPE_ID' => 'string',
             'XML_ID' => 'RESPONSIBLE_EMPLOYEE',
             'SORT' => 100,
             'MULTIPLE' => 'N',
             'MANDATORY' => 'N',
             'SHOW_FILTER' => 'Y',
             'SHOW_IN_LIST' => 'Y',
-            'EDIT_FORM_LABEL' => [
-                'en' => 'Responsible Employee',
-                'ru' => 'Ответственный сотрудник'
-            ],
-            'LIST_FILTER_LABEL' => [
-                'en' => 'Responsible Employee',
-                'ru' => 'Ответственный сотрудник'
-            ],
-            'LIST_COLUMN_LABEL' => [
-                'en' => 'Responsible',
-                'ru' => 'Ответственный'
-            ],
-            'LIST_FILTER_TYPE' => 'L',
-            'HELP_MESSAGE' => [
-                'en' => 'Select responsible employee',
-                'ru' => 'Выберите ответственного сотрудника'
-            ]
-        ];
+            'EDIT_FORM_LABEL' => 'Ответственный сотрудник',
+            'LIST_FILTER_LABEL' => 'Ответственный сотрудник',
+            'LIST_COLUMN_LABEL' => 'Ответственный'
+        ));
 
-        $iFieldId = $oUserField->Add($aUserField);
         return $iFieldId > 0;
     }
 
@@ -133,18 +115,15 @@ class responsible_role
      */
     private function DeleteCustomField()
     {
-        if (!CModule::IncludeModule('crm')) {
-            return false;
-        }
+        global $DB;
 
-        $rsField = CUserFieldEnum::GetList(
-            [],
-            ['FIELD_NAME' => self::FIELD_NAME]
+        $rsField = $DB->Query(
+            "SELECT * FROM b_user_field WHERE FIELD_NAME = '" . self::FIELD_NAME . "' LIMIT 1"
         );
         
         if ($arField = $rsField->Fetch()) {
-            $oUserField = new CUserTypeEntity();
-            return $oUserField->Delete($arField['ID']);
+            $DB->Query("DELETE FROM b_user_field WHERE ID = " . (int)$arField['ID']);
+            return true;
         }
 
         return true;
@@ -157,16 +136,6 @@ class responsible_role
     {
         global $DB;
 
-        // Get role ID for "Observer" role to copy permissions
-        $rsObserverRole = $DB->Query(
-            "SELECT ID FROM b_tasks_role WHERE CODE = 'observer' LIMIT 1"
-        );
-        
-        if (!($arObserverRole = $rsObserverRole->Fetch())) {
-            // If observer role doesn't exist, create with default permissions
-            return $this->CreateDefaultRole();
-        }
-
         // Check if role already exists
         $rsExistingRole = $DB->Query(
             "SELECT ID FROM b_tasks_role WHERE CODE = '" . self::ROLE_CODE . "' LIMIT 1"
@@ -177,67 +146,50 @@ class responsible_role
         }
 
         // Create new role
-        $iRoleId = $DB->Add('b_tasks_role', [
+        $iRoleId = $DB->Add('b_tasks_role', array(
             'CODE' => self::ROLE_CODE,
             'NAME' => self::ROLE_NAME,
-            'SORT' => 100,
-            'CREATED' => new CDatabase('NOW()'),
-            'MODIFIED' => new CDatabase('NOW()')
-        ]);
+            'SORT' => 100
+        ));
 
         if (!$iRoleId) {
             return false;
         }
 
-        // Copy permissions from observer role
-        $rsPermissions = $DB->Query(
-            "SELECT * FROM b_tasks_role_permission WHERE ROLE_ID = " . (int)$arObserverRole['ID']
+        // Get observer role permissions
+        $rsObserverRole = $DB->Query(
+            "SELECT ID FROM b_tasks_role WHERE CODE = 'observer' LIMIT 1"
         );
         
-        while ($arPermission = $rsPermissions->Fetch()) {
-            $DB->Add('b_tasks_role_permission', [
-                'ROLE_ID' => $iRoleId,
-                'PERMISSION_ID' => $arPermission['PERMISSION_ID'],
-                'VALUE' => $arPermission['VALUE']
-            ]);
-        }
+        if ($arObserverRole = $rsObserverRole->Fetch()) {
+            // Copy permissions from observer role
+            $rsPermissions = $DB->Query(
+                "SELECT * FROM b_tasks_role_permission WHERE ROLE_ID = " . (int)$arObserverRole['ID']
+            );
+            
+            while ($arPermission = $rsPermissions->Fetch()) {
+                $DB->Add('b_tasks_role_permission', array(
+                    'ROLE_ID' => $iRoleId,
+                    'PERMISSION_ID' => $arPermission['PERMISSION_ID'],
+                    'VALUE' => $arPermission['VALUE']
+                ));
+            }
+        } else {
+            // Add default permissions if observer role doesn't exist
+            $aDefaultPermissions = array(
+                'TASK_VIEW' => 'Y',
+                'TASK_COMMENT' => 'Y',
+                'TASK_EDIT' => 'N',
+                'TASK_DELETE' => 'N'
+            );
 
-        return true;
-    }
-
-    /**
-     * Create default role if observer doesn't exist
-     */
-    private function CreateDefaultRole()
-    {
-        global $DB;
-
-        $iRoleId = $DB->Add('b_tasks_role', [
-            'CODE' => self::ROLE_CODE,
-            'NAME' => self::ROLE_NAME,
-            'SORT' => 100,
-            'CREATED' => new CDatabase('NOW()'),
-            'MODIFIED' => new CDatabase('NOW()')
-        ]);
-
-        if (!$iRoleId) {
-            return false;
-        }
-
-        // Add default permissions (view only)
-        $aDefaultPermissions = [
-            'TASK_VIEW' => 'Y',
-            'TASK_COMMENT' => 'Y',
-            'TASK_EDIT' => 'N',
-            'TASK_DELETE' => 'N'
-        ];
-
-        foreach ($aDefaultPermissions as $sPermissionId => $sValue) {
-            $DB->Add('b_tasks_role_permission', [
-                'ROLE_ID' => $iRoleId,
-                'PERMISSION_ID' => $sPermissionId,
-                'VALUE' => $sValue
-            ]);
+            foreach ($aDefaultPermissions as $sPermissionId => $sValue) {
+                $DB->Add('b_tasks_role_permission', array(
+                    'ROLE_ID' => $iRoleId,
+                    'PERMISSION_ID' => $sPermissionId,
+                    'VALUE' => $sValue
+                ));
+            }
         }
 
         return true;
@@ -293,6 +245,8 @@ class responsible_role
                 CREATED DATETIME DEFAULT CURRENT_TIMESTAMP,
                 MODIFIED DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 UNIQUE KEY unique_task_role (TASK_ID, ROLE_ID),
+                KEY idx_task_id (TASK_ID),
+                KEY idx_user_id (USER_ID),
                 FOREIGN KEY (TASK_ID) REFERENCES b_tasks(ID) ON DELETE CASCADE,
                 FOREIGN KEY (ROLE_ID) REFERENCES b_tasks_role(ID) ON DELETE CASCADE,
                 FOREIGN KEY (USER_ID) REFERENCES b_user(ID) ON DELETE CASCADE
@@ -322,6 +276,7 @@ class responsible_role
             self::MODULE_ID,
             'OnTaskAdd',
             'responsible_role',
+            'responsible_role',
             'OnTaskAdd'
         );
 
@@ -329,12 +284,14 @@ class responsible_role
             self::MODULE_ID,
             'OnTaskUpdate',
             'responsible_role',
+            'responsible_role',
             'OnTaskUpdate'
         );
 
         RegisterModuleEvent(
             self::MODULE_ID,
             'OnTaskDelete',
+            'responsible_role',
             'responsible_role',
             'OnTaskDelete'
         );
@@ -349,6 +306,7 @@ class responsible_role
             self::MODULE_ID,
             'OnTaskAdd',
             'responsible_role',
+            'responsible_role',
             'OnTaskAdd'
         );
 
@@ -356,12 +314,14 @@ class responsible_role
             self::MODULE_ID,
             'OnTaskUpdate',
             'responsible_role',
+            'responsible_role',
             'OnTaskUpdate'
         );
 
         UnRegisterModuleEvent(
             self::MODULE_ID,
             'OnTaskDelete',
+            'responsible_role',
             'responsible_role',
             'OnTaskDelete'
         );
