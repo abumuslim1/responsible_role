@@ -1,0 +1,184 @@
+/**
+ * Bitrix24 Module: Responsible Role
+ * Styles for Responsible Employee field
+ */
+
+.responsible-role-wrapper {
+    margin: 15px 0;
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+}
+
+.responsible-role-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #333;
+    font-size: 13px;
+}
+
+.responsible-role-select {
+    width: 100%;
+    max-width: 400px;
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    font-size: 13px;
+    background-color: #fff;
+    color: #333;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+}
+
+.responsible-role-select:hover {
+    border-color: #999;
+}
+
+.responsible-role-select:focus {
+    outline: none;
+    border-color: #0066cc;
+    box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.1);
+}
+
+.responsible-role-info {
+    margin-top: 10px;
+    padding: 8px 12px;
+    background-color: #e8f4f8;
+    border-left: 3px solid #0066cc;
+    border-radius: 3px;
+    display: none;
+}
+
+.responsible-role-info .info-message {
+    margin: 0;
+    font-size: 12px;
+    color: #333;
+}
+
+.responsible-role-info .info-message strong {
+    color: #0066cc;
+}
+
+/* Task details section */
+.task-responsible-section {
+    margin: 15px 0;
+    padding: 12px;
+    background-color: #f0f7ff;
+    border: 1px solid #d4e6f1;
+    border-radius: 4px;
+}
+
+.task-responsible-section h4 {
+    margin: 0 0 10px 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.responsible-employee-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.responsible-employee-info .employee-name {
+    font-weight: 600;
+    color: #0066cc;
+    font-size: 13px;
+}
+
+.responsible-employee-info .employee-email {
+    color: #666;
+    font-size: 12px;
+}
+
+/* Filter section */
+.responsible-role-filter {
+    margin: 10px 0;
+    padding: 10px;
+    background-color: #f5f5f5;
+    border-radius: 3px;
+}
+
+.responsible-role-filter label {
+    display: inline-block;
+    margin-right: 10px;
+    font-weight: 600;
+    font-size: 12px;
+    color: #333;
+}
+
+.responsible-role-filter select {
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    font-size: 12px;
+    background-color: #fff;
+    color: #333;
+    cursor: pointer;
+}
+
+.responsible-role-filter select:focus {
+    outline: none;
+    border-color: #0066cc;
+}
+
+/* Task list with responsible column */
+.task-list-responsible-column {
+    width: 150px;
+    text-align: left;
+}
+
+.task-list-responsible-cell {
+    padding: 8px;
+    font-size: 12px;
+    color: #333;
+}
+
+.task-list-responsible-cell .employee-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    background-color: #e8f4f8;
+    border: 1px solid #0066cc;
+    border-radius: 3px;
+    color: #0066cc;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+    .responsible-role-select {
+        max-width: 100%;
+    }
+
+    .responsible-employee-info {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .task-list-responsible-column {
+        width: 100%;
+    }
+}
+
+/* Print styles */
+@media print {
+    .responsible-role-wrapper,
+    .responsible-role-info,
+    .responsible-role-filter {
+        display: none;
+    }
+
+    .task-responsible-section {
+        page-break-inside: avoid;
+        border: none;
+        background-color: transparent;
+    }
+}
